@@ -1,3 +1,20 @@
+/build/
+target/
+bin/
+.project
+.classpath
+.settings/
+*~
+*.orig
+*.new
+.idea/
+*.iml
+*.ipr
+test/**/build/
+examples/**/build/
+
+
+
 # Compiled class file
 *.class
 

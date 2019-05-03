@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+.msg { width: 80%; padding: 8px; margin-bottom: 20px;} 
+.normalMsg {background: #dfb} 
+.errorMsg {background: #ffbeb8}
+</style>
+<script src="/js/jquery-1.11.3.min.js"></script>
+<script src="/js/jquery-ajax-ext.js"></script>
+<script src="/js/gosqlgo.js"></script>
+</head>
+<meta charset="utf-8">
+<body>
+    <script> 
+	  document.write($java(`return new WebBox("/page/menu.html").setAttribute("title", $1);`, "Form validation demo")	); 
+	</script>  
+	
+	<div id="msg" class="msg"></div>
+	<br />
+	<script>
+	$java(`FULL package ab.cd;
+			import static com.github.drinkjava2.jsqlbox.JSQLBOX.gctx;
+			import com.github.drinkjava2.jdialects.StrUtils;
+			import com.github.drinkjava2.jsqlbox.ActiveEntity;
+
+			public class UserDemo implements ActiveEntity<UserDemo> {
+				static {
+					for (String ddl : gctx().toCreateDDL(UserDemo.class))
+						gctx().nExecute(ddl);
+				}
+
+				String name;
+				String identity;
+				String phoneNumber;
+
+				public String getName() {
+					return name;
+				}
+
+				public void setName(String name) {
+					this.name = name;
+				}
+
+				public String getIdentity() {
+					return identity;
+				}
+
+				public void setIdentity(String identity) {
+					this.identity = identity;
+				}
+
+				public String getPhoneNumber() {
+					return phoneNumber;
+				}
+
+				public void setPhoneNumber(String phoneNumber) {
+					this.phoneNumber = phoneNumber;
+				}
+
+				public String inputCheck() {
+					StringBuilder error = new StringBuilder();
+					if (StrUtils.isEmpty(getName()))
+						error.append("Name can not be empty; <br/>");
+					if (StrUtils.isEmpty(getIdentity()))
+						error.append("Identity can not be empty; <br/> ");
+					if (StrUtils.isEmpty(getPhoneNumber()))
+						error.append("Phone_number can not be empty; <br/>");
+					return error.toString();
+				}
+			}
+		 `); 
+	
+	  function postForm(){ 
+	    var rst = $java(`import ab.cd.UserDemo; 
+		UserDemo u= JSON.parseObject($1, UserDemo.class); 
+		String error = u.inputCheck();
+		if (error.isEmpty()) {
+			u.insert();  
+			return "msg:UserDemo saved, now have "+eCountAll(UserDemo.class)+" records.";
+		} else
+			return "error:" + error;
+		`, formToJSON("form1")); 
+		 if(rst.startsWith("msg:")){   
+			 $("#msg").html(rst.substring(4));
+			 $("#msg").css("background", "#dfb");
+		 } else if(rst.startsWith("error:")){    
+			 $("#msg").html(rst.substring(6));
+			 $("#msg").css("background", "#ffbeb8");
+		 }	 
+		}
+	</script>
+	<form id="form1" name="form1" onsubmit="return false" action="##"
+		method="post">
+		Name:<br /> <input type="text" name="name" value="" /><br /> Identity:
+		<br />
+		<input type="text" name="identity" value="" /><br /> Phone Number: <br />
+		<input type="text" name="phoneNumber" value="" /><br />
+		<br />
+		<button name="Submit" value="true" onclick="postForm()">Submit</button>
+	</form>
+</body>
+</html>

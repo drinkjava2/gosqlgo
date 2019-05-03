@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+section { margin-bottom: 30px} 
+section header {
+	font-weight: bolder;
+	padding-bottom: 10px;
+} 
+.amount {
+	width: 200px;
+	text-align: right;
+	border: 1px solid #aaa;
+	background-color: #eee;
+	padding: 3px 8px;
+} 
+.msg {
+	width: 80%;
+	padding: 8px;
+	margin-bottom: 20px; 
+} 
+.normalMsg {background: #dfb} 
+.errorMsg {background: #ffbeb8}
+  
+[v-cloak]{display:none } /* to avoid vue render flash */  
+
+</style>
+
+<script src="/js/vue.js"></script>
+<script src="/js/jquery-1.11.3.min.js"></script>
+<script src="/js/jquery-ajax-ext.js"></script>
+<script src="/js/gosqlgo.js"></script>
+</head>
+<body>
+	<div v-cloak id="vm">
+		<span v-html="menu"></span>
+		<div id="msgid" :class="['msg', {normalMsg:hasNormalMsg, errorMsg: hasErrorMsg }]">{{message}}</div>
+		<section>
+			<header>Account A</header>
+			<div id="A" class="amount">{{aAmount}}</div>
+		</section>
+		<section>
+			<header>Account B</header>
+			<div id="B" class="amount">{{bAmount}}</div>
+		</section>
+
+		<section>
+			<header>Transfer</header>
+			<form onsubmit="return false" action="##" method="post">
+				<input name="amount" value="100" class="amount">
+				<button name="btnA2B" value="true" onclick="transfer('A','B',100)">From
+					account A to account B</button>
+				<button name="btnB2A" value="true" onclick="transfer('B','A',100)">From
+					account B to account A</button>
+			</form>
+		</section>
+	</div>
+	<script>
+	  var vm= new Vue({
+		  el: '#vm',
+		  data: { 
+			  hasNormalMsg: false,
+			  hasErrorMsg: false,
+			  message: '', 
+			  menu:$java(`return new WebBox("/page/menu.html").setAttribute("title", $1);`, "Transaction demo, use Vue.js"),
+			  aAmount: $qry(`select amount from account where id=? and amount>=?`, 'A',0),
+			  bAmount: $qry(`select amount from account where id=? and amount>=?`, 'B',0) 
+		  }
+		})
+	
+	  function transfer(from, to, money){ 
+		 var rst = $javaTx(`#TransferMoney 
+						int money=Integer.parseInt($3);
+						if(money<=0) 
+						  throw new SecurityException("Money<=0, IP:"+ getRequest().getRemoteAddr());
+						Account a=new Account().setId($1).load();
+						if(a.getAmount()<money)
+						   return "Error:No enough balance!";
+						Account b=new Account().setId($2).load();
+						a.setAmount(a.getAmount()-money).update();
+						b.setAmount(b.getAmount()+money).update(); 
+						return "Transfer Success!|"+a.getAmount()+"|"+b.getAmount();
+						`,	from,to,money);    
+		  if(rst.startsWith("Transfer Success!")) { 
+			  var words=rst.split('|');
+			  vm.message=words[0];
+			  vm.hasNormalMsg= true; 
+			  vm.hasErrorMsg =false;
+	 	      vm.aAmount=words[1];
+	 	      vm.bAmount=words[2]; 
+		  }
+		  else  if(rst.startsWith("Error:")) { 
+			  vm.message=rst.substring(6); 
+			  vm.hasNormalMsg= false; 
+			  vm.hasErrorMsg = true;
+		  } 
+		}
+	</script>
+</body>
+</html>
