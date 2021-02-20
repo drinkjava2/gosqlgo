@@ -29,127 +29,156 @@ import com.github.drinkjava2.gosqlgo.util.GsgStrUtils;
  */
 public class GoSqlGoEnv {// NOSONAR
 
-	public static final Map<String, Class<?>> gsgTemplates = new HashMap<String, Class<?>>();
- 
+    private static final Map<String, Class<?>> gsgTemplates = new HashMap<String, Class<?>>();
 
-	public static void registerGsgTemplate(String gsgMethod, Class<?> templateClass) {
-		gsgTemplates.put(gsgMethod, templateClass);
-	}
+    private static final String deploy_package; // deploy package name, store dynamic generated classed
 
-	private static String webappAbsoluteFolder; // servlet webapp absolute folder
+    private static final String project_root_folder; // absolute path of deploy package
 
-	private static String deploy; // deploy package, store dynamic generated classed
+    private static final String stage; // product or develop. If set to product, reject receive SQL and Java from front end
 
-	private static String deployAbsolutePath; // absolute path of deploy package
+    private static final boolean debug_info; // product or develop. If set to true will return debug info to front end
 
-	private static String template; // template package name to store GoSqlGo template classes
+    private static final boolean is_product_stage;
 
-	private static boolean isProduct = true; // if is product, reject compile files sent from front end
+    private static final boolean java_file_export; // if export java class source file in classes/.../deploy folder
 
-	static {
-		InputStream is = DeployTool.class.getClassLoader().getResourceAsStream("GoSqlGo.properties");
-		if (is == null) {
-			System.err.println("Error: Config file GoSqlGo.properties not found.");
-			System.exit(0);
-		}
-		Properties prop = new Properties();
-		try {
-			prop.load(is);
-			deploy = prop.getProperty("deploy");
-			template = prop.getProperty("template");
+    private static final String develop_token;
 
-			String stage = prop.getProperty("stage");
-			if ("product".equals(stage))
-				isProduct = true;
-			else if ("develop".equals(stage))
-				isProduct = false;
-			else
-				throw new IllegalArgumentException("In GoSqlGo.properties, stage can only be develop or production");
+    private static final TokenSecurity tokenSecurity;
 
-			deployAbsolutePath = new File("").getAbsolutePath() + "/src/main/java/"
-					+ GsgStrUtils.replace(deploy, ".", "/");
-			webappAbsoluteFolder = new File("").getAbsolutePath() + "/src/main/webapp";
-		} catch (Exception e) {
-			throw new IllegalArgumentException(e);
-		} finally {
-			try {
-				is.close();
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		}
-	}
+    //private static final AbstractBaseTemplate baseTemplate;
 
-	/**
-	 * Return class stored in deploy package, if not found, return null
-	 */
-	public static Class<?> findStoredClass(String sqlJavaPiece) {
-		if (sqlJavaPiece == null)
-			return null;
-		if (!GsgStrUtils.isLegalClassName(sqlJavaPiece))
-			return null;
-		return ClassExistCacheUtils
-				.checkClassExist(new StringBuilder(GoSqlGoEnv.getDeploy()).append(".").append(sqlJavaPiece).toString());
-	}
+    static {
+        InputStream is = DeployTool.class.getClassLoader().getResourceAsStream("gosqlgo.properties");
+        if (is == null) {
+            System.err.println("Error: Config file gosqlgo.properties not found.");
+            System.exit(0);
+        }
+        Properties prop = new Properties();
+        try {
+            prop.load(is);
+            deploy_package = prop.getProperty("deploy_package");
+            //TEMPLATE_PACKAGE = prop.getProperty("template_package");
 
-	/**
-	 * @return the source code webapp folder
-	 */
-	public static String getSrcWebappFolder() {
-		String srcWebappFolder = GsgStrUtils.replace(webappAbsoluteFolder, "\\", "/");
-		srcWebappFolder = GsgStrUtils.replaceFirst(srcWebappFolder, "target/classes/", "");
-		return srcWebappFolder;
-	}
+            stage = prop.getProperty("stage");
+            if ("product".equalsIgnoreCase(stage) || "develop".equalsIgnoreCase(stage)) {
+            } else
+                throw new IllegalArgumentException("In gosqlgo.properties, stage can only be develop or product");
+            is_product_stage = "product".equalsIgnoreCase(stage);
 
-	/**
-	 * @return the source code deploy folder
-	 */
-	public static String getSrcDeployFolder() {
-		String srcWebappFolder = GsgStrUtils.replace(deployAbsolutePath, "\\", "/");
-		srcWebappFolder = GsgStrUtils.replaceFirst(srcWebappFolder, "target/classes/", "");
-		return srcWebappFolder;
-	}
+            String devTokenStr = prop.getProperty("develop_token");
+            if (devTokenStr == null)
+                devTokenStr = "";
+            develop_token = devTokenStr;
 
-	// ==========getter & setter =============
+            String token_security = prop.getProperty("token_security");
+            tokenSecurity = (TokenSecurity) Class.forName(token_security).newInstance();
 
-	public static String getDeployAbsolutePath() {
-		return deployAbsolutePath;
-	}
+            String debug_info_str = prop.getProperty("debug_info");
+            if ("true".equalsIgnoreCase(debug_info_str) || "false".equalsIgnoreCase(debug_info_str)) {
+            } else
+                throw new IllegalArgumentException("In gosqlgo.properties, debug_info can only be true or false");
+            debug_info = "true".equalsIgnoreCase(prop.getProperty("debug_info"));
 
-	public static void setDeployAbsolutePath(String deployAbsolutePath) {
-		GoSqlGoEnv.deployAbsolutePath = deployAbsolutePath;
-	}
+            if ("true".equalsIgnoreCase(prop.getProperty("java_file_export")))
+                java_file_export = true;
+            else
+                java_file_export = false;
 
-	public static String getDeploy() {
-		return deploy;
-	}
+            String newFilePath = new File("").getAbsolutePath();
+            newFilePath = GsgStrUtils.substringBefore(newFilePath, "\\target");
+            project_root_folder = GsgStrUtils.substringBefore(newFilePath, "/target");
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        } finally {
+            try {
+                is.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
 
-	public static void setDeploy(String deploy) {
-		GoSqlGoEnv.deploy = deploy;
-	}
+    /**
+     * Register customized GoSqlGo template class
+     * 
+     * @param gsgMethod
+     * @param templateClass
+     */
+    public static void registerGsgTemplate(String gsgMethod, Class<?> templateClass) {
+        gsgTemplates.put(gsgMethod, templateClass);
+    }
 
-	public static String getWebappAbsoluteFolder() {
-		return webappAbsoluteFolder;
-	}
+    /**
+     * Return class stored in deploy package, if not found, return null
+     */
+    public static Class<?> findCachedClass(String sqlJavaPiece) {
+        if (sqlJavaPiece == null)
+            return null;
+        if (!GsgStrUtils.isLegalClassName(sqlJavaPiece))
+            return null;
+        return ClassExistCacheUtils.checkClassExist(new StringBuilder(GoSqlGoEnv.getDeployPackage()).append(".").append(sqlJavaPiece).toString());
+    }
 
-	public static void setWebappAbsoluteFolder(String webappAbsoluteFolder) {
-		GoSqlGoEnv.webappAbsoluteFolder = webappAbsoluteFolder;
-	}
+    public static String getClassesDeployFolder() {
+        return getClassLoaderFolder() + "/" + GsgStrUtils.replace(deploy_package, ".", "/");
+    }
 
-	public static String getTemplate() {
-		return template;
-	}
+    public static String getSrcDeployFolder() {
+        return getProjectRootFolder() + "/src/main/java/" + GsgStrUtils.replace(deploy_package, ".", "/");
+    }
 
-	public static void setTemplate(String template) {
-		GoSqlGoEnv.template = template;
-	}
+    public static String getSrcWebappFolder() {
+        return getProjectRootFolder() + "/src/main/webapp";
 
-	public static boolean isProduct() {
-		return isProduct;
-	}
+    }
 
-	public static void setProduct(boolean isProduct) {
-		GoSqlGoEnv.isProduct = isProduct;
-	}
+    public static String getClassLoaderFolder() {
+        String path = Thread.currentThread().getContextClassLoader().getResource("").toString();
+        path = GsgStrUtils.replaceFirst(path, "file:/", "");
+        path = GsgStrUtils.replaceFirst(path, "file:", "");
+        if (path.endsWith("/") || path.endsWith("\\"))
+            path = path.substring(0, path.length() - 1);
+        return path;
+    }
+
+    // ==========getter & setter =============
+
+    public static Map<String, Class<?>> getGsgtemplates() {
+        return gsgTemplates;
+    }
+
+    public static String getDeployPackage() {
+        return deploy_package;
+    }
+
+    public static String getProjectRootFolder() {
+        return project_root_folder;
+    }
+
+    public static boolean isProductStage() {
+        return is_product_stage;
+    }
+
+    public static boolean isDevelopStage() {
+        return !is_product_stage;
+    }
+
+    public static boolean isDebugInfo() {
+        return debug_info;
+    }
+
+    public static boolean isJavaFileExport() {
+        return java_file_export;
+    }
+
+    public static String getDevelopToken() {
+        return develop_token;
+    }
+
+    public static TokenSecurity getTokenSecurity() {
+        return tokenSecurity;
+    }
 
 }

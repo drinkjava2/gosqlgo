@@ -92,13 +92,7 @@ public class GsgFileUtils {
 			return null;
 		}
 		try {
-			ByteArrayOutputStream result = new ByteArrayOutputStream();
-			byte[] buffer = new byte[1024];
-			int length;
-			while ((length = inputStream.read(buffer)) != -1)
-				result.write(buffer, 0, length);
-			String string = result.toString(encoding);
-			return string;
+			return inputStreamToString(inputStream, encoding);
 		} catch (IOException e) {
 			e.printStackTrace();
 			return null;
@@ -108,6 +102,15 @@ public class GsgFileUtils {
 			} catch (IOException e) {
 			}
 		}
+	}
+
+	public static String inputStreamToString(InputStream inputStream, String encoding) throws IOException {
+		ByteArrayOutputStream result = new ByteArrayOutputStream();
+		byte[] buffer = new byte[1024];
+		int length;
+		while ((length = inputStream.read(buffer)) != -1)
+			result.write(buffer, 0, length);
+		return result.toString(encoding);
 	}
 
 	public static void appendFile(String fileName, String content) {

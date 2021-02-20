@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+.msg { width: 80%; padding: 8px; margin-bottom: 20px;} 
+.normalMsg {background: #dfb} 
+.errorMsg {background: #ffbeb8}
+</style>
+<script src="/js/jquery-1.11.3.min.js"></script>
+<script src="/js/jquery-ajax-ext.js"></script>
+<script src="/js/gosqlgo.js"></script>
+</head>
+<body>
+    <script>document.write($java(`return new WebBox("/WEB-INF/menu.html");`));</script>
+    <script>
+             document.write($java(`
+    		   try {
+                response.getWriter().println("<h2>Form input validation demo</h2>");
+                response.getWriter().flush();
+               } catch (Exception e) { 
+               }  
+    		   return NONE;
+             `));
+    </script>
+      
+
+	<div id="msg" class="msg"></div>
+	<br />
+	<script>
+	 function postForm(){ 
+		    var rst = $$java(`
+import com.alibaba.fastjson.JSON;
+import com.demo.entity.DemoUser;
+import com.github.drinkjava2.jdialects.StrUtils;
+import com.github.drinkjava2.jsqlbox.DB;
+import static com.github.drinkjava2.jsqlbox.DB.*;
+import com.github.drinkjava2.gosqlgo.util.MD5Util; 
+	        DemoUser u = JSON.parseObject($1, DemoUser.class);
+	        StringBuilder error = new StringBuilder();
+	        if (StrUtils.isEmpty(u.getUsername()))
+	            error.append("User name can not be empty. <br/>");
+	        if (DB.qryIntValue("select count(*) from demo_user where username=",que(u.getUsername()))>0)
+	            error.append("User name already exist. <br/>");	        
+	        if (StrUtils.isEmpty(u.getIdentity()))
+	            error.append("Identity can not be empty. <br/> ");
+	        if (StrUtils.isEmpty(u.getPhoneNumber()))
+	            error.append("Phone_number can not be empty. <br/>");
+	        if (StrUtils.isEmpty(u.getPassword()))
+	            error.append("Password can not be empty. <br/>");
+	        String errors = error.toString();
+	        if (errors.isEmpty()) {
+	            u.setPassword(MD5Util.encryptMD5(u.getUsername()));
+	            u.insert(par());
+	            return new JsonResult(200, "DemoUser saved, now have " + DB.entityCount(DemoUser.class) + " records.");
+	        } else
+      	        return new JsonResult(0, errors);
+	        `, formToJSON("form1"));
+		    
+		     $("#msg").html(rst.msg);
+			 if(rst.code==200){
+				 $("#msg").css("background", "#dfb");
+				
+				 users=$qryMapList(`select * from demo_user order by id`);
+		         if(users.length>0){
+		             html="User List:<br/>";
+			         for(var i=0;i<users.length;i++) 
+				          html+="User Name:" +  users[i].USERNAME+", identity:"+ users[i].IDENTITY+", phoneNumber:"+ users[i].PHONENUMBER+"<br/>";
+			         $("#Users").html(html);
+		         } 	  
+			   }
+			  else     
+				 $("#msg").css("background", "#ffbeb8");			 
+			} 
+	</script>
+	<form id="form1" name="form1" onsubmit="return false" action="##" method="post">
+		User Name:<br /><input type="text" name="username" value="" /><br /> 
+		Identity:<br /> <input type="text" name="identity" value="" /><br />
+		Phone Number: <br /><input type="text" name="phoneNumber" value="" /><br />
+		Password: <br /><input type="text" name="password" value="" /><br /><br />
+		<button name="Submit" value="true" onclick="postForm()">Submit</button>
+	</form> 
+    <p id="Users"> </p>
+</body>
+</html>

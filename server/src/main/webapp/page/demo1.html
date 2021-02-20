@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+section {
+	margin-bottom: 30px
+}
+
+section header {
+	font-weight: bolder;
+	padding-bottom: 10px;
+}
+
+.amount {
+	width: 200px;
+	text-align: right;
+	border: 1px solid #aaa;
+	background-color: #eee;
+	padding: 3px 8px;
+}
+
+.msg {
+	width: 80%;
+	padding: 8px;
+	margin-bottom: 20px;
+}
+</style>
+<script src="/js/jquery-1.11.3.min.js"></script>
+<script src="/js/jquery-ajax-ext.js"></script>
+<script src="/js/gosqlgo.js"></script>
+</head>
+<body>
+      
+    <script>document.write($java(`return new WebBox("/WEB-INF/menu.html");`)); </script>
+    <h2>Transaction demo, use jQuery</h2>
+    
+    <script> 
+	  function getUserListHtml(){
+		  var users=$qryMapList(`select * from account where amount>=? order by id`,0);
+		  var html="User List:<br/>";
+		  for(var i=0;i<users.length;i++) 
+			  html+="User ID:" +  users[i].ID+", AMOUNT:"+ users[i].AMOUNT+"<br/>"; 
+	      return html;		   
+	  }
+	</script>
+	   
+	<div id="msgid" class="msg"></div> 
+	<p id="Users">
+	    <script>document.write(getUserListHtml());</script>   
+	</p>
+	
+	<section>
+		<header>Account A</header>
+		<div id="A" class="amount">
+			<script>
+				document.write($qryObject(`select amount from account where id=? and amount>=?`, 'A',0));
+			</script>
+		</div>
+	</section>
+	<section>
+		<header>Account B</header>
+		<div id="B" class="amount">
+			<script>
+			    account=$qryEntity(`com.demo.entity.Account, select * from account where id=?`, 'B');
+				document.write(account.amount);
+			</script>
+		</div>
+	</section>
+	<script>
+	  function transfer(from, to, money){ 
+			var rst = $$javaTx(`
+					int money = Integer.parseInt($3);
+					if (money <= 0)
+					     return new JsonResult(0, "Error: Illegal input.");
+					Account a = new Account().setId($1).load();
+					if (a.getAmount() < money)
+					     return new JsonResult(0, "Error:No enough balance!");
+					Account b = new Account().setId($2).load();
+					a.setAmount(a.getAmount() - money).update();
+					b.setAmount(b.getAmount() + money).update();
+					    return new JsonResult(200, "Transfer success!").setDataArray(a.getAmount(), b.getAmount());
+			        `, from,to,money); 
+		  $("#msgid").text(rst.msg);	
+		  if(rst.code==200) { 
+	 	      $("#"+from).text(rst.data[0]);
+	 	      $("#"+to).text(rst.data[1]);
+	 	      $("#msgid").css("background", "#dfb");
+		  }
+		  else $("#msgid").css("background", "#ffbeb8");
+		  
+ 	      $("#Users").html(getUserListHtml());
+		}
+	</script>
+	<section>
+		<header>Transfer</header>
+		<form onsubmit="return false" action="##" method="post">
+			<input id="amount" name="amount" value="100" class="amount">
+			<button name="btnA2B" value="true" onclick="transfer('A','B', $('#amount').val())">From account A to account B</button>
+			<button name="btnB2A" value="true" onclick="transfer('B','A',$('#amount').val())">From account B to account A</button>
+		</form>
+	</section>
+</body>
+</html>

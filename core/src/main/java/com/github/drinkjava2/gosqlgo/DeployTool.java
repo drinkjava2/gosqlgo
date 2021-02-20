@@ -24,24 +24,20 @@ import java.util.List;
 public class DeployTool {
 
 	public static void deploy(String option) {
-		if ("goServ".equalsIgnoreCase(option))
-			goServ();
-		else if ("goServForce".equalsIgnoreCase(option))
-			goServForce();
+		if ("goServer".equalsIgnoreCase(option))
+		    goServForce();
 		else if ("goFront".equalsIgnoreCase(option))
-			goFront();
-		else if ("goFrontForce".equalsIgnoreCase(option))
-			goFrontForce();
+		    goFrontForce();
 		else
 			System.out
-					.println("Error: Deploy option can only be 'goServ', 'goServForce' or 'goFront' or 'goFrontForce'");
+					.println("Error: Deploy option can only be 'goServer' or 'goFront'");
 	}
 
 	/**
 	 * Register a customized GSG template
 	 */
 	public static void registerGsgTemplate(String gsgMethod, Class<?> templateClass) {
-		GoSqlGoEnv.gsgTemplates.put(gsgMethod, templateClass);
+		GoSqlGoEnv.registerGsgTemplate(gsgMethod, templateClass);
 	}
 
 	/**
@@ -101,8 +97,7 @@ public class DeployTool {
 		for (int i = 0; i < array.length; i++) {
 			if (array[i].isFile()) {
 				String fileName = array[i].getName();
-				if (fileName.endsWith(".html") || fileName.endsWith(".htm") || fileName.endsWith(".js")
-						|| fileName.endsWith(".jsp"))
+				if (fileName.endsWith(".html") || fileName.endsWith(".htm") || fileName.endsWith(".jsp"))
 					files.add(array[i]);
 			} else if (array[i].isDirectory()) {
 				getHtmlJspJsFiles(array[i].getPath(), files);

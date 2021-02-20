@@ -13,13 +13,15 @@ bin/
 test/**/build/
 examples/**/build/
 
-
-
 # Compiled class file
 *.class
 
 # Log file
 *.log
+
+# Bat files used by yong
+maven_*.bat
+command.bat
 
 # BlueJ files
 *.ctxt

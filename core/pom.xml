@@ -4,7 +4,7 @@
  <groupId>com.github.drinkjava2</groupId>
  <artifactId>gosqlgo</artifactId>
  <packaging>jar</packaging>
- <version>1.1.0</version>
+ <version>2.0</version>
  
  <name>gosqlgo</name>
  <description>gosqlgo is a tool support write sql and java at front end</description> 
@@ -55,6 +55,12 @@
  </properties>  
 
  <dependencies>  
+     <!-- For JSON translate -->
+	<dependency>
+    	<groupId>com.alibaba</groupId>
+    	<artifactId>fastjson</artifactId>
+    	<version>1.2.75</version>
+	</dependency>  
       
 	<!-- Servlet libs, usually supplied by Servlet Server -->
     <dependency>
@@ -71,15 +77,14 @@
       <version>2.3.3</version>
       <scope>provided</scope>
     </dependency> 
-	
-     <!-- Test dependencies -->
-     <dependency>
-       <groupId>junit</groupId>
-       <artifactId>junit</artifactId>
-       <version>4.11</version>
-       <scope>test</scope>
-    </dependency> 
-	
+
+    <!-- jWebBox is a server side html or jsp page layout tool -->
+	<dependency>
+      <groupId>com.github.drinkjava2</groupId>
+      <artifactId>jwebbox</artifactId>
+      <version>3.0</version>
+    </dependency>
+    
  </dependencies> 
 
     <build>

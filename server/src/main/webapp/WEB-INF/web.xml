@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app id="WebApp_ID" version="2.4"
+	xmlns="http://java.sun.com/xml/ns/j2ee" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://java.sun.com/xml/ns/j2ee http://java.sun.com/xml/ns/j2ee/web-app_2_4.xsd">
+ 
+    <!-- 这个文件存放通用的GoSqlGo配置，可用于任意基于web.xml的传统servlet容器，本演示项目因为是从MainApp启动Undertow服务， 并
+                没有用到这个配置，写这个文件只是为了可移植性 -->
+ 
+    <!-- Dao and database initialization 初始化数据库以备测试 -->  
+	<servlet>
+	   <servlet-name>InitConfig</servlet-name>
+	   <servlet-class>com.demo.InitConfig</servlet-class>
+	   <load-on-startup>0</load-on-startup>
+	</servlet>  
+
+	<!-- Register GoSqlGo Servlet -->  
+	<servlet>
+		<servlet-name>GoSqlGoServlet</servlet-name>
+		<servlet-class>com.demo.GoSqlGoServlet</servlet-class>
+	</servlet>
+
+    <!-- Map all .gsg to GoSqlGoServlet -->  
+	<servlet-mapping>
+		<servlet-name>GoSqlGoServlet</servlet-name>
+		<url-pattern>*.gsg</url-pattern>
+	</servlet-mapping>
+ 
+	<!-- home page -->
+	<welcome-file-list>
+		<welcome-file>/page/home.html</welcome-file>
+	</welcome-file-list>
+
+	<!-- 404 page -->
+	<error-page>
+		<error-code>404</error-code>
+		<location>/page/404.html</location>
+	</error-page> 
+
+</web-app>

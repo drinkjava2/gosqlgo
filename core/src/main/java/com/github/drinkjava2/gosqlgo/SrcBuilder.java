@@ -22,89 +22,78 @@ import com.github.drinkjava2.gosqlgo.util.TxtUtils;
  */
 public abstract class SrcBuilder { // NOSONAR
 
-	public static String createSourceCode(Class<?> templateClass, PieceType type, String frontText) {
-		SqlJavaPiece piece = SqlJavaPiece.parseFromFrontText(frontText);
-		return createSourceCode(templateClass, type, piece);
-	}
+    /**
+     * According templateClass, pieceType, frontText to generate java source code
+     * 
+     * @param templateClass
+     * @param pieceType
+     * @param frontText
+     * @return java source code
+     */
+    public static String createSourceCode(Class<?> templateClass, PieceType pieceType, String frontText) {
+        SqlJavaPiece piece = SqlJavaPiece.parseFromFrontText(pieceType.toString(), frontText);
+        return createSourceCode(templateClass, pieceType, piece);
+    }
 
-	public static String createSourceCode(Class<?> templateClass, PieceType piectType, SqlJavaPiece piece) {
-		if (piectType == null)
-			throw new NullPointerException("PieceType can not be null when create source code");
-		String classSrc;
-		if (piece.isFull()) {
-			classSrc = piece.getBody();
-			if (piece.isServ())
-				classSrc = "// GSG SERV\n" + classSrc;
-		} else {
-			classSrc = TxtUtils.getJavaSourceCodeUTF8(templateClass);
-			classSrc = GsgStrUtils.substringAfter(classSrc, "package ");
-			classSrc = GsgStrUtils.substringAfter(classSrc, ";");
-			classSrc = buildGsgTagsForJavaSourceCode(piece) + "\n" + classSrc;
-			classSrc = piece.getImports() + "\n" + classSrc;
-			classSrc = "package " + GoSqlGoEnv.getDeploy() + ";\n" + classSrc;
-			String classDeclar = GsgStrUtils.substringBetween(classSrc, "public ", "{");
-			classSrc = GsgStrUtils.replaceFirst(classSrc, classDeclar,
-					"class " + piece.getClassName() + " extends " + templateClass.getName());
+ 
+    /**
+     * According templateClass, pieceType, SqlJavaPiece to generate java source code
+     * 
+     * @param templateClass
+     * @param piectType
+     * @param sqlJavaPiece
+     * @return
+     */
+    public static String createSourceCode(Class<?> templateClass, PieceType piectType, SqlJavaPiece sqlJavaPiece) {
+        if (piectType == null)
+            throw new NullPointerException("PieceType can not be null when create source code");
+        String classSrc;
 
-			if (PieceType.JAVA.equals(piectType)) {
-				classSrc = GsgStrUtils.replaceOneBetween(classSrc, "/* GSG BODY BEGIN */", "/* GSG BODY END */",
-						piece.getBody());
-			} else if (PieceType.QRY.equals(piectType)) {
-				String sql = piece.getBody();
-				sql = GsgStrUtils.replace(sql, "\\`", "`");
-				sql = GsgStrUtils.replace(sql, "\"", "\\\"");
-				classSrc = GsgStrUtils.replaceOneBetween(classSrc, "/* GSG BODY BEGIN */", "/* GSG BODY END */",
-						"\n" + "		String sql = \"" + sql + "\";" + "\n		");
-			}
-		}
-		return classSrc;
-	}
+        classSrc = TxtUtils.getJavaSourceCodeUTF8(templateClass);
+        classSrc = GsgStrUtils.substringAfter(classSrc, "package ");
+        classSrc = GsgStrUtils.substringAfter(classSrc, ";");
+        classSrc = sqlJavaPiece.getImports() + "\n" + classSrc;
+        classSrc = "package " + GoSqlGoEnv.getDeployPackage() + ";\n" + classSrc;
+        String classDeclar = GsgStrUtils.substringBetween(classSrc, "public ", "{");
+        classSrc = GsgStrUtils.replaceFirst(classSrc, classDeclar, "class " + sqlJavaPiece.getClassName() + " extends " + templateClass.getName());
 
-	public static String createFrontText(PieceType pieceType, SqlJavaPiece piece) {
-		if (PieceType.JAVA.equals(pieceType)) {
-			String head = buildFrontLeadingTagsAndImports(piece);
-			String body = piece.getBody();
-			if (head.length() > 0 && body != null && body.length() > 0 && body.charAt(0) == ' ')
-				head = head.substring(0, head.length() - 1);
-			return head + body;
-		} else if (PieceType.QRY.equals(pieceType)) {
-			String sql = piece.getBody();
-			sql = GsgStrUtils.substringAfter(sql, "\"");
-			sql = GsgStrUtils.substringBeforeLast(sql, "\"");
-			sql = GsgStrUtils.replace(sql, "`", "\\`").trim();
-			return buildFrontLeadingTagsAndImports(piece) + sql;
-		}
-		throw new NullPointerException("Unknow error when create front text");
-	}
+        if (PieceType.JAVA.equals(piectType)) {
+            classSrc = GsgStrUtils.replaceOneBetween(classSrc, "/* GSG BODY BEGIN */", "/* GSG BODY END */", sqlJavaPiece.getBody());
+        } else if (PieceType.QRY.equals(piectType)) {
+            String sql = sqlJavaPiece.getBody();
+            sql = GsgStrUtils.replace(sql, "\\`", "`");
+            sql = GsgStrUtils.replace(sql, "\"", "\\\"");
+            classSrc = GsgStrUtils.replaceOneBetween(classSrc, "/* GSG BODY BEGIN */", "/* GSG BODY END */", "\n" + "		String sql = \"" + sql + "\";" + "\n		");
+        } else
+            throw new IllegalArgumentException("Unknow PieceType when create Java source code");
+        return classSrc;
+    }
 
-	/** Build GSG TAGS for java source code */
-	public static String buildGsgTagsForJavaSourceCode(SqlJavaPiece piece) {
-		StringBuilder sb = new StringBuilder();
-		if (piece.isServ())
-			sb.append("\n// GSG SERV");
-		if (piece.isFront())
-			sb.append("\n// GSG FRONT");
-		if (piece.isFull())
-			sb.append("\n// GSG FULL");
-		if (!GsgStrUtils.isEmpty(piece.getId()))
-			sb.append("\n // GSG ID = \"").append(GsgStrUtils.replaceFirst(piece.getId(), "#", "")).append("\";");
-		return sb.toString();
-	}
+    public static String createFrontText(PieceType pieceType, SqlJavaPiece piece) {
+        if (PieceType.JAVA.equals(pieceType)) {
+            String head = buildFrontLeadingTagsAndImports(piece);
+            String body = piece.getBody();
+            if (head.length() > 0 && body != null && body.length() > 0 && body.charAt(0) == ' ')
+                head = head.substring(0, head.length() - 1);
+            return head + body;
+        } else if (PieceType.QRY.equals(pieceType)) {
+            String sql = piece.getBody();
+            sql = GsgStrUtils.substringAfter(sql, "\"");
+            sql = GsgStrUtils.substringBeforeLast(sql, "\"");
+            sql = GsgStrUtils.replace(sql, "`", "\\`").trim();
+            return buildFrontLeadingTagsAndImports(piece) + sql;
+        }  
+        throw new IllegalArgumentException("Unknow PieceType when create front text");
+    }
 
-	/** build Front Leading Tags */
-	public static String buildFrontLeadingTagsAndImports(SqlJavaPiece piece) {
-		StringBuilder sb = new StringBuilder();
-		if (piece.isServ())
-			sb.append("SERV ");
-		if (piece.isFront())
-			sb.append("FRONT ");
-		if (piece.isFull())
-			sb.append("FULL ");
-		if (!GsgStrUtils.isEmpty(piece.getId()))
-			sb.append("#").append(piece.getId()).append(" ");
-		if (!GsgStrUtils.isEmpty(piece.getImports()))
-			sb.append(piece.getImports()).append(" ");
-		return sb.toString();
-	}
+    /** build Front Leading Tags */
+    public static String buildFrontLeadingTagsAndImports(SqlJavaPiece piece) {
+        StringBuilder sb = new StringBuilder();
+        if (!GsgStrUtils.isEmpty(piece.getId()))
+            sb.append("#").append(piece.getId()).append(" ");
+        if (!GsgStrUtils.isEmpty(piece.getImports()))
+            sb.append(piece.getImports()).append(" ");
+        return sb.toString();
+    }
 
 }

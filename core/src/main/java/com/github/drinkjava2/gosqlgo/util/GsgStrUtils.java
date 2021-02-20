@@ -1044,11 +1044,11 @@ public class GsgStrUtils {
 	 * Build a random class name by give length, name started with letter "Z"
 	 */
 	public static String getRandomClassName(int length) {
-		String str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+		String str = "abcdefghijklmnopqrstuvwxyz0123456789";
 		Random random = new Random();
-		StringBuilder sb = new StringBuilder("Z");
+		StringBuilder sb = new StringBuilder();
 		for (int i = 0; i < length - 1; i++) {
-			int number = random.nextInt(62);
+			int number = random.nextInt(36);
 			sb.append(str.charAt(number));
 		}
 		return sb.toString();

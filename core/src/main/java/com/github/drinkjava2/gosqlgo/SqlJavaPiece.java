@@ -13,6 +13,10 @@ package com.github.drinkjava2.gosqlgo;
 import static com.github.drinkjava2.gosqlgo.util.GsgStrUtils.getRandomClassName;
 import static com.github.drinkjava2.gosqlgo.util.GsgStrUtils.isEmpty;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 import com.github.drinkjava2.gosqlgo.util.GsgFileUtils;
 import com.github.drinkjava2.gosqlgo.util.GsgStrUtils;
 
@@ -42,30 +46,6 @@ public class SqlJavaPiece {
 
 	public void setId(String id) {
 		this.id = id;
-	}
-
-	public boolean isServ() {
-		return serv;
-	}
-
-	public void setServ(boolean serv) {
-		this.serv = serv;
-	}
-
-	public boolean isFront() {
-		return front;
-	}
-
-	public void setFront(boolean front) {
-		this.front = front;
-	}
-
-	public boolean isFull() {
-		return full;
-	}
-
-	public void setFull(boolean full) {
-		this.full = full;
 	}
 
 	public String getImports() {
@@ -122,18 +102,37 @@ public class SqlJavaPiece {
 	 * b.d.e; import b.d.e; select * from users ");
 	 * 
 	 */
-	public static SqlJavaPiece parseFromFrontText(String frontText) {
-		SqlJavaPiece piece = doParase(frontText);
+	public static SqlJavaPiece parseFromFrontText(String gsgMethod, String frontText) {
+		SqlJavaPiece piece = doParse(frontText);
 		if (!piece.getClassName().isEmpty())
 			return piece;
 		if (isEmpty(piece.getId()))
-			piece.setClassName(getRandomClassName(10));
+			piece.setClassName("Default_"+getRandomOrCachedClassName(gsgMethod, frontText));
 		else
-			piece.setClassName(GsgStrUtils.replace(piece.getId(), "#", ""));
+			piece.setClassName(GsgStrUtils.replace(piece.getId(), "#", "")+"_"+getRandomOrCachedClassName(gsgMethod, frontText));
 		return piece;
 	}
 
-	private static SqlJavaPiece doParase(String frontText) {
+	// Cache random IDs, for developing stage only
+	private static final Map<String, String> cachedRandomIdMap = new ConcurrentHashMap<String, String>();
+
+	private static String getRandomOrCachedClassName(String gsgMethod, String frontText) {
+		String key = gsgMethod + ":" + frontText;
+		String id = cachedRandomIdMap.get(key);
+		if (GsgStrUtils.isEmpty(id)) {
+			id = getRandomClassName(20);
+			cachedRandomIdMap.put(key, id);
+		}
+		return id;
+	}
+
+	/**
+	 * Parse front text to SqlJavaPiece object
+	 * 
+	 * @param frontText
+	 * @return SqlJavaPiece
+	 */
+	private static SqlJavaPiece doParse(String frontText) {
 		SqlJavaPiece piece = new SqlJavaPiece();
 		piece.setOriginText(frontText);
 		if (GsgStrUtils.isEmpty(frontText))
@@ -142,70 +141,34 @@ public class SqlJavaPiece {
 		String trimed = GsgStrUtils.trimLeadingWhitespace(lastPiece);
 		String firstWord = GsgStrUtils.findFirstWordNoWhiteChars(trimed);
 		while (!GsgStrUtils.isEmpty(firstWord)) {
-			if ("FULL".equalsIgnoreCase(firstWord))
-				piece.setFull(true);
-			else if ("FRONT".equalsIgnoreCase(firstWord))
-				piece.setFront(true);
-			else if ("SERV".equalsIgnoreCase(firstWord))
-				piece.setServ(true);
-			else if (firstWord.startsWith("#"))
+			if (firstWord.startsWith("#"))
 				piece.setId(firstWord);
 			else if ("import".equals(firstWord)) { // NOSONAR
 				// a.b; import b.c; select * from users; // NOSONAR
 				StringBuilder imports = new StringBuilder();
 				while ("import".equals(firstWord)) {
 					String importStr = GsgStrUtils.substringBefore(lastPiece, ";");
-					imports.append(importStr).append("; // GSG IMPORT\n");
+					String stmp=(importStr+"; // GSG IMPORT").trim();
+					imports.append(stmp).append("\n");
 					lastPiece = lastPiece.substring(importStr.length() + 1);// import a.b; import c.d
 					trimed = lastPiece.trim();
 					firstWord = GsgStrUtils.findFirstWordNoWhiteChars(trimed);
-					if (!"import".equals(firstWord)) {
-						if (piece.isFull())
-							setPackageNameAndClassName(piece, frontText);
-						else {
-							piece.setImports(imports.toString());
-							piece.setBody(lastPiece);
-						}
-						return piece;
-					}
+                    if (!"import".equals(firstWord)) {
+                        piece.setImports(imports.toString());
+                        piece.setBody(lastPiece);
+                        return piece;
+                    }
 				}
-			} else {// Not imports found
-				if (piece.isFull())
-					setPackageNameAndClassName(piece, frontText);
-				else
-					piece.setBody(lastPiece);
-				return piece;
-			}
+            } else {// Not imports found
+                piece.setBody(lastPiece);
+                return piece;
+            }
 			lastPiece = trimed.substring(firstWord.length());
 			trimed = GsgStrUtils.trimLeadingWhitespace(lastPiece);
 			firstWord = GsgStrUtils.findFirstWordNoWhiteChars(trimed);
 		}
-		if (piece.isFull())
-			setPackageNameAndClassName(piece, frontText);
-		else
-			piece.setBody(lastPiece);
+		 piece.setBody(lastPiece);
 		return piece;
-	}
-
-	/**
-	 * For "Full" type, find the package name and class name
-	 */
-	private static void setPackageNameAndClassName(SqlJavaPiece piece, String frontText) {
-		if (!frontText.contains("package"))
-			return;
-		String afterPackage = GsgStrUtils.substringAfter(frontText, "package");
-		piece.setBody("package" + afterPackage);
-
-		String pkgName = GsgStrUtils.substringBetween(frontText, "package", ";");
-		pkgName = pkgName.trim();
-		GsgStrUtils.assumeNotEmpty(pkgName, "'package ' not found");
-		piece.setPackageName(pkgName);
-
-		String className = GsgStrUtils.substringAfter(afterPackage, "public class ");
-		className = GsgStrUtils.trimLeadingWhitespace(className);
-		className = GsgStrUtils.findFirstWordNoWhiteChars(className);
-		GsgStrUtils.assumeNotEmpty(className, "'public class ' not found.");
-		piece.setClassName(className);
 	}
 
 	public static SqlJavaPiece parseFromJavaSrcFile(String fileFullPath) {
@@ -217,31 +180,17 @@ public class SqlJavaPiece {
 		String code = GsgStrUtils.substringBetween(src, "/* GSG BODY BEGIN */", "/* GSG BODY END */");
 		if (!GsgStrUtils.isEmpty(code))
 			piece.setMethodType("JAVA");
-
-		if (GsgStrUtils.isEmpty(code)) {
-			code = GsgStrUtils.substringBetween(src, "/* GSG BODY BEGIN */", "/* GSG BODY END */");
-			if (!GsgStrUtils.isEmpty(code))
-				piece.setMethodType("SQL");
-		}
 		if (GsgStrUtils.isEmpty(code))
 			return piece;
 
 		piece.setBody(code);
 
-		String id = GsgStrUtils.substringBetween(src, "// GSG ID = \"", "\"");
-		piece.setId(id);
-
-		piece.setServ(src.contains("// GSG SERV"));
-
-		piece.setFull(src.contains("// GSG FULL"));
-
-		piece.setFront(src.contains("// GSG FRONT"));
-
+		piece.setId(null);
 		String imports = "";
 		while (src.contains("// GSG IMPORT")) {
 			String st = GsgStrUtils.substringBefore(src, "// GSG IMPORT");
 			st = GsgStrUtils.substringAfterLast(st, "import ");
-			imports += ("import " + st).trim();
+			imports += "\n"+("import " + st).trim();
 			src = GsgStrUtils.replaceFirst(src, "// GSG IMPORT", "");
 		}
 		piece.setImports(imports);
